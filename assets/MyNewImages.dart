@@ -1,4 +1,3 @@
 class MyNewImages{
-  
-   static final String ll = "ll.txt";
+    static final String basePath = "hi";
 }

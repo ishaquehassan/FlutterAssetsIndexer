@@ -12,6 +12,8 @@ File classFile;
 List<String> lines = [];
 String header = '';
 String footer = '';
+String basePathStr = '';
+String className = '';
 
 void main(List<String> arguments) async{
   if (arguments.length != 2) {
@@ -22,7 +24,8 @@ void main(List<String> arguments) async{
   var watcher = DirectoryWatcher(p.relative(arguments[0]));
   var path = arguments[1];
   classFile = File(path);
-
+  className = classFile.path.split('/').last.split('.').first;
+  basePathStr = arguments[0].replaceAll('./', '');
   var attachWatcher = (){
     watcher.events.listen((event) {
       decideEvent(event);
@@ -57,7 +60,8 @@ void decideEvent(WatchEvent event) async{
 
 Future<File> putClassCode(File myFile) {
   return myFile
-      .writeAsString('''class ${myFile.path.split("/").last.split(".").first}{
+      .writeAsString('''class $className{
+  static final String basePath = "$basePathStr/";
 
 }''');
 }
@@ -86,8 +90,10 @@ void setFileStr(Function onDone){
   classFile.readAsString().then((contents){
     lines = contents.split('\n');
     header = lines.first.trim();
+    basePathStr = lines[1];
     footer = lines.last.trim();
     lines.removeAt(0);
+    lines.removeAt(1);
     lines.removeLast();
     onDone();
   });
@@ -96,7 +102,7 @@ void setFileStr(Function onDone){
 Future<File> addAsset(String assetPath) async {
   var fileName = assetPath.split('/').last.split('.').first;
   var fileExt = assetPath.split('/').last.split('.').last;
-  lines.add('   static final String ${ReCase(fileName).camelCase} = "$fileName.$fileExt";');
+  lines.add('   static final String ${ReCase(fileName).camelCase} = $className.basePath+"$fileName.$fileExt";');
   return classFile.writeAsString('''$header
   ${lines.join("\n")}
 $footer''', flush: true);
