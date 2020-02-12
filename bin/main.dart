@@ -1,78 +1,115 @@
 library watch;
 
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:recase/recase.dart';
 import 'package:watcher/watcher.dart';
 
-void main(List<String> arguments) {
+
+File classFile;
+List<String> lines = [];
+String header = '';
+String footer = '';
+
+void main(List<String> arguments) async{
   if (arguments.length != 2) {
     print('Usage: watch <assets directory path> <assets output path>');
     return;
   }
-
-  var watcher = DirectoryWatcher(p.absolute(arguments[0]));
+  var createdDir = await createAssetsFile(arguments[0], isDir: true);
+  var watcher = DirectoryWatcher(p.relative(arguments[0]));
   var path = arguments[1];
-  watcher.events.listen((event) {
-    createAssetsFile(path,(){
-      if(event.type == ChangeType.ADD){
-        addAsset(path, event.path);
-      }
-      if(event.type == ChangeType.REMOVE){
-        removeAsset(path, event.path);
-      }
+  classFile = File(path);
+
+  var attachWatcher = (){
+    watcher.events.listen((event) {
+      decideEvent(event);
+    }).onError((e) {
+      print(e);
     });
-  }).onError((e){
-    print(e);
+  };
+
+  await createAssetsFile(path).then((nf) {
+    if (nf != null) {
+      putClassCode(classFile).then((f) {
+        setFileStr(() {
+          attachWatcher();
+        });
+      });
+    }else{
+      setFileStr(() {
+        attachWatcher();
+      });
+    }
   });
+
 }
 
-void createAssetsFile(String path,Function onDone) async{
-  var myFile = File(path);
-  var checkFile = await myFile.exists();
-  if(!checkFile){
-    await myFile.create(recursive: true);
-    await myFile.writeAsString('''class Assets{
-
-}''');
-    onDone();
-  }else{
-    onDone();
+void decideEvent(WatchEvent event) async{
+  if (event.type == ChangeType.REMOVE) {
+    classFile = await removeAsset(event.path);
+  } else if (event.type == ChangeType.ADD) {
+    classFile = await addAsset(event.path);
   }
 }
 
-void addAsset(String path,String assetPath){
+Future<File> putClassCode(File myFile) {
+  return myFile
+      .writeAsString('''class ${myFile.path.split("/").last.split(".").first}{
+
+}''');
+}
+
+typedef onFileCreated(dynamic file);
+
+Future<dynamic> createAssetsFile(String path,
+    {bool isDir = false}) async {
+  var myFile;
+  if (!isDir) {
+    myFile = classFile;
+  } else {
+    myFile = Directory(path);
+  }
+  var checkFile = await myFile.exists();
+  if (!checkFile) {
+    return myFile.create(recursive: true);
+  } else {
+    return Future<Null>((){
+      return null;
+    });
+  }
+}
+
+void setFileStr(Function onDone){
+  classFile.readAsString().then((contents){
+    lines = contents.split('\n');
+    header = lines.first.trim();
+    footer = lines.last.trim();
+    lines.removeAt(0);
+    lines.removeLast();
+    onDone();
+  });
+}
+
+Future<File> addAsset(String assetPath) async {
   var fileName = assetPath.split('/').last.split('.').first;
   var fileExt = assetPath.split('/').last.split('.').last;
-  var classFile = File(path);
-  classFile.readAsString().then((String contents) {
-    var lines = contents.split('\n');
-    var header = lines.first.trim();
-    var footer = lines.last.trim();
-    lines.removeAt(0);
-    lines.removeLast();
-    lines.add(' static final String ${ReCase(fileName).camelCase} = "$fileName.$fileExt";');
-    classFile.writeAsStringSync('''$header
+  lines.add('   static final String ${ReCase(fileName).camelCase} = "$fileName.$fileExt";');
+  return classFile.writeAsString('''$header
   ${lines.join("\n")}
-$footer''',flush: true);
-  });
+$footer''', flush: true);
 }
 
-void removeAsset(String path,String assetPath){
+Future<File>  removeAsset(String assetPath) async {
   var fileName = assetPath.split('/').last.split('.').first;
-  var classFile = File(path);
-  classFile.readAsString().then((String contents) {
-    var lines = contents.split('\n');
-    var header = lines.first.trim();
-    var footer = lines.last.trim();
-    lines.removeAt(0);
-    lines.removeLast();
-    var index = lines.indexWhere((line)=>line.contains('static final String ${ReCase(fileName).camelCase}'));
+  var index = lines.indexWhere(
+      (line) => line.contains('String ${ReCase(fileName).camelCase}'));
+  if (index >= 0) {
     lines.removeAt(index);
-    classFile.writeAsStringSync('''$header
+  }
+  return classFile.writeAsString('''$header
   ${lines.join("\n")}
-$footer''',flush: true);
-  });
+$footer''', flush: true);
 }
-
