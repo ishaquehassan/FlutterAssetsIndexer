@@ -1,5 +1,6 @@
 library watch;
 
+import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 
@@ -26,12 +27,27 @@ void main(List<String> arguments) async{
   classFile = File(path);
   className = classFile.path.split('/').last.split('.').first;
   basePathStr = arguments[0].replaceAll('./', '');
+  var existingFiles = await filesInDirectory(Directory(arguments[0]));
   var attachWatcher = (){
-    watcher.events.listen((event) {
-      decideEvent(event);
-    }).onError((e) {
-      print(e);
-    });
+    if(existingFiles.isNotEmpty){
+      for(var i = 0;i<existingFiles.length;i++){
+        addAsset(existingFiles[i].path);
+        if(i == existingFiles.length-1){
+          watcher.events.listen((event) {
+            decideEvent(event);
+          }).onError((e) {
+            print(e);
+          });
+        }
+      }
+    }else{
+      watcher.events.listen((event) {
+        decideEvent(event);
+      }).onError((e) {
+        print(e);
+      });
+    }
+
   };
 
   await createAssetsFile(path).then((nf) {
@@ -102,6 +118,7 @@ void setFileStr(Function onDone){
 Future<File> addAsset(String assetPath) async {
   var fileName = assetPath.split('/').last.split('.').first;
   var fileExt = assetPath.split('/').last.split('.').last;
+  await removeAsset(assetPath);
   lines.add('   static final String ${ReCase(fileName).camelCase} = $className.basePath+"$fileName.$fileExt";');
   return classFile.writeAsString('''$header
   ${lines.join("\n")}
@@ -114,8 +131,19 @@ Future<File>  removeAsset(String assetPath) async {
       (line) => line.contains('String ${ReCase(fileName).camelCase}'));
   if (index >= 0) {
     lines.removeAt(index);
-  }
-  return classFile.writeAsString('''$header
+    return classFile.writeAsString('''$header
   ${lines.join("\n")}
 $footer''', flush: true);
+  }
+}
+
+Future<List<File>> filesInDirectory(Directory dir) async {
+  var files = <File>[];
+  await for (FileSystemEntity entity in dir.list(recursive: false, followLinks: false)) {
+    var type = await FileSystemEntity.type(entity.path);
+    if (type == FileSystemEntityType.FILE) {
+      files.add(entity);
+    }
+  }
+  return files;
 }
