@@ -1,20 +1,24 @@
 library watch;
 
 import 'dart:async';
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:recase/recase.dart';
+import 'package:quartet/quartet.dart';
 import 'package:watcher/watcher.dart';
 
 
 File classFile;
+List<String > templateFile;
 List<String> lines = [];
 String header = '';
 String footer = '';
 String basePathStr = '';
 String className = '';
+const String BASE_PATH_HOLDER = '{{BASE_PATH}}';
+const String CLASS_NAME_HOLDER = '{{CLASS_NAME}}';
+const String VAR_NAME_HOLDER = '{{VAR_NAME}}';
+const String FILE_NAME_HOLDER = '{{FILE_NAME}}';
 
 void main(List<String> arguments) async{
   if (arguments.length != 2) {
@@ -25,6 +29,7 @@ void main(List<String> arguments) async{
   var watcher = DirectoryWatcher(p.relative(arguments[0]));
   var path = arguments[1];
   classFile = File(path);
+  templateFile = File('/Users/ishaqhassan/Desktop/Flutter/assets_watcher/AppImages.templ').readAsLinesSync();
   className = classFile.path.split('/').last.split('.').first;
   basePathStr = arguments[0].replaceAll('./', '');
   var existingFiles = await filesInDirectory(Directory(arguments[0]));
@@ -33,19 +38,20 @@ void main(List<String> arguments) async{
       for(var i = 0;i<existingFiles.length;i++){
         addAsset(existingFiles[i].path);
         if(i == existingFiles.length-1){
-          watcher.events.listen((event) {
+          print('DONE : Mapped ${existingFiles.length} Files');
+          /*watcher.events.listen((event) {
             decideEvent(event);
           }).onError((e) {
             print(e);
-          });
+          });*/
         }
       }
     }else{
-      watcher.events.listen((event) {
+      /*watcher.events.listen((event) {
         decideEvent(event);
       }).onError((e) {
         print(e);
-      });
+      });*/
     }
 
   };
@@ -75,11 +81,11 @@ void decideEvent(WatchEvent event) async{
 }
 
 Future<File> putClassCode(File myFile) {
+  var classNameLine = templateFile[0].replaceAll(CLASS_NAME_HOLDER, className);
+  var basePathLine = templateFile[1].replaceAll(BASE_PATH_HOLDER, basePathStr);
+  var closingLine = templateFile[3];
   return myFile
-      .writeAsString('''class $className{
-  static final String basePath = "$basePathStr/";
-
-}''');
+      .writeAsString(classNameLine+'\n'+basePathLine+'\n\n'+closingLine);
 }
 
 typedef onFileCreated(dynamic file);
@@ -118,17 +124,21 @@ void setFileStr(Function onDone){
 Future<File> addAsset(String assetPath) async {
   var fileName = assetPath.split('/').last.split('.').first;
   var fileExt = assetPath.split('/').last.split('.').last;
-  await removeAsset(assetPath);
-  lines.add('   static final String ${ReCase(fileName).camelCase} = $className.basePath+"$fileName.$fileExt";');
+  var varLine = templateFile[2]
+      .replaceAll(VAR_NAME_HOLDER, camelCase(fileName))
+      .replaceAll(FILE_NAME_HOLDER, '$fileName.$fileExt')
+      .replaceAll(CLASS_NAME_HOLDER, className);
+  await removeAsset(varLine);
+  lines.add(varLine);
   return classFile.writeAsString('''$header
-  ${lines.join("\n")}
+${basePathStr}
+${lines.join("\n")}
 $footer''', flush: true);
 }
 
-Future<File>  removeAsset(String assetPath) async {
-  var fileName = assetPath.split('/').last.split('.').first;
+Future<File>  removeAsset(String line) async {
   var index = lines.indexWhere(
-      (line) => line.contains('String ${ReCase(fileName).camelCase}'));
+      (line) => line.contains(line));
   if (index >= 0) {
     lines.removeAt(index);
     return classFile.writeAsString('''$header
