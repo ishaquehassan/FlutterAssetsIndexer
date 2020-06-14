@@ -76,7 +76,10 @@ void decideEvent(WatchEvent event) async{
   if (event.type == ChangeType.REMOVE) {
     classFile = await removeAsset(event.path);
   } else if (event.type == ChangeType.ADD) {
-    classFile = await addAsset(event.path);
+    var f = await addAsset(event.path);
+    if(f != null){
+      classFile = f;
+    }
   }
 }
 
@@ -117,6 +120,8 @@ void setFileStr(Function onDone){
     lines.removeAt(0);
     lines.removeAt(1);
     lines.removeLast();
+    lines = lines.join('\n').split(';');
+    lines = lines.map((line)=>line.trim()).toList();
     onDone();
   });
 }
@@ -124,6 +129,9 @@ void setFileStr(Function onDone){
 Future<File> addAsset(String assetPath) async {
   var fileName = assetPath.split('/').last.split('.').first;
   var fileExt = assetPath.split('/').last.split('.').last;
+  if(fileName.isEmpty){
+    return null;
+  }
   var varLine = templateFile[2]
       .replaceAll(VAR_NAME_HOLDER, camelCase(fileName))
       .replaceAll(FILE_NAME_HOLDER, '$fileName.$fileExt')
