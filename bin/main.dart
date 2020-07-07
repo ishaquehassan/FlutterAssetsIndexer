@@ -29,7 +29,11 @@ void main(List<String> arguments) async{
   var watcher = DirectoryWatcher(p.relative(arguments[0]));
   var path = arguments[1];
   classFile = File(path);
-  templateFile = File('/Users/ishaqhassan/Desktop/Flutter/assets_watcher/AppImages.templ').readAsLinesSync();
+  var tplPath = Platform.script.path;
+  var tplSplit = tplPath.split('/');
+  tplSplit.removeLast();
+  tplPath = tplSplit.join('/');
+  templateFile = File('${tplPath}/../AppImages.templ').readAsLinesSync();
   className = classFile.path.split('/').last.split('.').first;
   basePathStr = arguments[0].replaceAll('./', '');
   var existingFiles = await filesInDirectory(Directory(arguments[0]));

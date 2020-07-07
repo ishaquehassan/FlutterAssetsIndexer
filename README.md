@@ -1,5 +1,14 @@
 # Assets Indexer for Dart
 
+# IMPORTANT!
+You need [Dart SDK](https://dart.dev/get-dart) or [Flutter SDK](https://flutter.dev/docs/get-started/install) to use this CLI tool. 
+Also if you already have Flutter installed, you can simply add `PATH_TO_FLUTTER_SDK/bin/cache/dart-sdk/bin` to your `environment PATH`.
+
+### Install dependencies
+~~~~
+cd FlutterAssetsIndexer && pub get
+~~~~
+
 ### Add Alias for easy access
 ~~~~
 alias assetsIndexer='dart PATH_TO_CLONED_DIR/bin/main.dart $1 $2'
@@ -23,8 +32,3 @@ Image.asset(Images.logo)
 ~~~~
 import "Images.dart"
 ~~~~ 
-
-
-# WARNING!
-You need [Dart SDK](https://dart.dev/get-dart) or [Flutter SDK](https://flutter.dev/docs/get-started/install) to use this CLI tool. 
-Also if you already have Flutter installed, you can simply add `PATH_TO_FLUTTER_SDK/bin/cache/dart-sdk/bin` to your `environment PATH`.
