@@ -29,6 +29,9 @@ void main(List<String> arguments) async{
   var watcher = DirectoryWatcher(p.relative(arguments[0]));
   var path = arguments[1];
   classFile = File(path);
+  if(await classFile.exists()){
+    await classFile.delete();
+  }
   var tplPath = Platform.script.path;
   var tplSplit = tplPath.split('/');
   tplSplit.removeLast();
