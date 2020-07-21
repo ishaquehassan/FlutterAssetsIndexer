@@ -26,7 +26,7 @@ void main(List<String> arguments) async{
     return;
   }
   var createdDir = await createAssetsFile(arguments[0], isDir: true);
-  var watcher = DirectoryWatcher(p.relative(arguments[0]));
+  //var watcher = DirectoryWatcher(p.relative(arguments[0]));
   var path = arguments[1];
   classFile = File(path);
   if(await classFile.exists()){
@@ -46,19 +46,11 @@ void main(List<String> arguments) async{
         addAsset(existingFiles[i].path);
         if(i == existingFiles.length-1){
           print('DONE : Mapped ${existingFiles.length} Files');
-          /*watcher.events.listen((event) {
-            decideEvent(event);
-          }).onError((e) {
-            print(e);
-          });*/
+          //connectWatcher(watcher);
         }
       }
     }else{
-      /*watcher.events.listen((event) {
-        decideEvent(event);
-      }).onError((e) {
-        print(e);
-      });*/
+     //connectWatcher(watcher);
     }
 
   };
@@ -79,10 +71,22 @@ void main(List<String> arguments) async{
 
 }
 
+
+void connectWatcher(DirectoryWatcher watcher){
+  watcher.events.listen((event) {
+    decideEvent(event);
+  }).onError((e) {
+    print(e);
+  });
+}
+
 void decideEvent(WatchEvent event) async{
+  print('Change Detected');
   if (event.type == ChangeType.REMOVE) {
+    print('Removing Assets');
     classFile = await removeAsset(event.path);
   } else if (event.type == ChangeType.ADD) {
+    print('Adding Assets');
     var f = await addAsset(event.path);
     if(f != null){
       classFile = f;
